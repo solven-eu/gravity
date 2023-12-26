@@ -1,0 +1,20 @@
+html, body {
+    margin: 0px;
+    padding: 0px;
+    background-color: #000;
+}
+#canvas {
+    border: 3px solid #F00;
+    border-radius: 0px;
+    position: fixed;
+    width: 500px;
+    height: 400px;
+    left: 50%;
+    top: 50%;
+    margin-left: -250px;
+    margin-top: -200px;
+    padding: 0px;
+    background-color: #FFF;
+    cursor: default;
+    z-index: 0;
+}

@@ -1,0 +1,54 @@
+{
+    "game": {
+        "width": 1000,
+        "height": 1000
+    },
+    "players": [
+        {
+            "name": "player1",
+            "color": "blue"
+        },
+        {
+            "name": "player2",
+            "color": "red"
+        }
+    ],
+    "particules": [
+        {
+            "player": "player1",
+            "position": {
+                "x": 123,
+                "y": 456
+            },
+            "speed": {
+                "x": 1.2,
+                "y": 3.4
+            },
+            "alpha": {
+                "x": 0.2,
+                "y": 3.5
+            },
+            "boosts": {
+                "alpha_x": 2345
+            }
+        },
+        {
+            "player": "player2",
+            "position": {
+                "x": 223,
+                "y": 456
+            },
+            "speed": {
+                "x": 1.2,
+                "y": -3.4
+            },
+            "alpha": {
+                "x": 0.2,
+                "y": 3.5
+            },
+            "boosts": {
+                "alpha_x": 2345
+            }
+        }
+    ]
+}
