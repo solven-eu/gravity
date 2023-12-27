@@ -127,7 +127,7 @@ if (typeof Math.sign == "undefined") {
 
 
 
-var Circle = function (c, r, cor, cof) { // Fix CoR & CoF
+var Circle = function (c, r, v = new Vector()) {
     // c for coordinates
     this.c = c;
     // r for rayon
@@ -135,20 +135,18 @@ var Circle = function (c, r, cor, cof) { // Fix CoR & CoF
     // m for superficie
     this.m = r * r * Math.PI;
     // v for vitesse
-    this.v = new Vector();
+    this.v = v;
     // a for acceleration
     this.a = new Vector();
-    this.cor = cor;
-    this.cof = cof;
 };
 
 
 function checkCCCol(a, b) {
     var d = distanceVector(a, b);
-    var norm = distance(d);
+    var normSquared = d.lengthSq();
 
     var r = a.r + b.r;
-    if (norm < r) {
+    if (normSquared < r * r) {
         return true;
     } else {
         return false;
@@ -202,10 +200,6 @@ var RAF = window.requestAnimationFrame || window.webkitRequestAnimationFrame || 
 
 
 
-var mouse = {
-    p: new Vector()
-};
-
 var gravity = 0.1;
 
 var particles = [];
@@ -222,21 +216,46 @@ window.addEventListener("mousemove", function (e) {
 
 });
 
-var minCircleSize = 5;
-var maxCircleSize = 15;
+var minCircleSize = 1;
+var maxCircleSize = 5;
+
+
+
+// We use a buffer to remember where the mousedown occurs, as the particules are created on mouseup event
+var mouseBuffer = {
+    down: new Vector(),
+    up: new Vector()
+};
+
+snapMouse = function(e) {
+    const bound = canvas.getBoundingClientRect();
+
+    var coords = new Vector();
+    coords.x = e.pageX - bound.left;
+    coords.y = e.pageY - bound.top;
+
+    return coords;
+}
 
 window.addEventListener("mousedown", function (e) {
-    const bound = canvas.getBoundingClientRect();
-    mouse.p.x = e.pageX - bound.left;
-    mouse.p.y = e.pageY - bound.top;
-
-    mouse.p.set(mouse.p.mul(new Vector(world.size.x / bound.width, world.size.y / bound.height)));
-
-    particles.push(new Circle(mouse.p.clone(), Math.random() * (maxCircleSize - minCircleSize) + minCircleSize, 0.95, 0.95));
+    mouseBuffer.down = snapMouse(e);
 });
 
 window.addEventListener("mouseup", function (e) {
+    mouseBuffer.up = snapMouse(e);
 
+    var c = mouseBuffer.down.clone();
+    // Initial speed is defined by the move with mouse down
+    var v = mouseBuffer.up.sub(mouseBuffer.down);
+    v = v.div(world.size.x);
+
+    // Scale from render coordinates to world coordinates
+    const bound = canvas.getBoundingClientRect();
+    c.set(c.mul(new Vector(world.size.x / bound.width, world.size.y / bound.height)));
+    v.set(v.mul(new Vector(world.size.x / bound.width, world.size.y / bound.height)));
+
+    r = Math.random() * (maxCircleSize - minCircleSize) + minCircleSize;
+    particles.push(new Circle(c, r, v));
 });
 
 // The shortest vector going from right to left
@@ -270,12 +289,13 @@ function distanceVector(left, right) {
         return d;
     }
 }
-function distance(d) {
+function distancePreventZero(d) {
     // We add 100.0 to prevent getting too much near 0 and related instabilities as we will divide by `norm`
     var norm = Math.sqrt(100.0 + d.lengthSq());
     return norm;
 }
 
+// if torus: https://physics.stackexchange.com/questions/21882/gravitation-in-a-space-that-is-topologically-toroidal
 function compute_forces() {
     // For each particule in the world
     for (var i = 0; i < particles.length; i++) {
@@ -291,8 +311,8 @@ function compute_forces() {
             var d = distanceVector(p, p2);
 
             // distance between particules
-            var norm = distance(d);
-            // BEWARE Why it is cube and not squared?
+            var norm = distancePreventZero(d);
+            // BEWARE We cube it as we will later multiply by the direction vector `d`
             var mag = gravity / (norm * norm * norm);
 
             // Each particule apply a force to each other particule
@@ -300,6 +320,15 @@ function compute_forces() {
             p.a.set(p.a.sub(d.mul(mag * p2.m)));
             p2.a.set(p2.a.add(d.mul(mag * p.m)));
 
+            
+            if (world.topology == "torus") {
+                // https://physics.stackexchange.com/questions/21882/gravitation-in-a-space-that-is-topologically-toroidal
+                // The gravity is also applied from the copy through the torus. One may argue we could conisder only
+                // the nearest copy. However, if 2 objects are separated by `size / 2` the force from the lfet copy and the right copy
+                // are roughly equivalent
+
+            }
+            
         }
     }
 
@@ -436,24 +465,25 @@ function render() {
         ctx.fill();
         ctx.closePath();
 
-        speedInsightFactor = 50;
+        sInsightFactor = 30;
 
         ctx.beginPath();
         ctx.lineWidth = 3;
         ctx.strokeStyle = "blue";
         ctx.moveTo(renderC.x, renderC.y);
-        ctx.lineTo(renderC.x + p.v.x * speedInsightFactor, renderC.y + p.v.y * speedInsightFactor);
+        ctx.lineTo(renderC.x + p.v.x * sInsightFactor, renderC.y + p.v.y * sInsightFactor);
         ctx.stroke();
         ctx.closePath();
 
+        aInsightFactor = 100;
         ctx.beginPath();
         ctx.lineWidth = 3;
         ctx.strokeStyle = "red";
-        ctx.moveTo(renderC.x + p.v.x * speedInsightFactor, renderC.y + p.v.y * speedInsightFactor);
-        ctx.lineTo(renderC.x + p.v.x * speedInsightFactor + p.a.x * speedInsightFactor, renderC.y + p.v.y * speedInsightFactor  + p.a.y * speedInsightFactor);
+        ctx.moveTo(renderC.x + p.v.x * sInsightFactor, renderC.y + p.v.y * sInsightFactor);
+        ctx.lineTo(renderC.x + p.v.x * sInsightFactor + p.a.x * aInsightFactor, renderC.y + p.v.y * sInsightFactor  + p.a.y * aInsightFactor);
         ctx.stroke();
         ctx.closePath();
     });
 
-    console.log("total cinetic energy: ", cineticEnergy);
+    // console.log("total cinetic energy: ", cineticEnergy);
 }
